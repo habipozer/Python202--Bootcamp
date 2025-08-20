@@ -163,7 +163,7 @@ class Library:
                     print(f"Error loading book from JSON: {e}")
                     print(f"Skipping invalid book data: {i}")
         except FileNotFoundError:
-            pass
+           print("library_data.json can not found.")
         except json.JSONDecodeError as e:
             print(f"Error reading JSON file: {e}")
         except Exception as e:

@@ -174,8 +174,8 @@ def test_save_and_load_books():
 def test_load_books_file_not_found():
     library = Library("Test Library", "nonexistent.json")
     
-    with pytest.raises(FileNotFoundError):
-        library.load_books()
+    library.load_books()
+    assert len(library._booklist) == 0
 
 def test_list_books_empty():
     library = Library("Test Library", "test_empty.json")
