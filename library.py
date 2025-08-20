@@ -126,7 +126,7 @@ class Library:
         except httpx.RequestError as e:
             print(f"Connection error: {e}")
         except httpx.ConnectError as e:
-            print("Network Connection error")
+            print("Network connection error")
         except Exception as e:
             print(f"Unexpected error: {e}")
     
@@ -163,7 +163,7 @@ class Library:
                     print(f"Error loading book from JSON: {e}")
                     print(f"Skipping invalid book data: {i}")
         except FileNotFoundError:
-           print("library_data.json can not found.")
+           print("library_data.json could not be found.")
         except json.JSONDecodeError as e:
             print(f"Error reading JSON file: {e}")
         except Exception as e:
