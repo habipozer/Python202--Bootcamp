@@ -1,0 +1,1 @@
+[{"title": "Old Format Book", "author": "Old Author", "isbn": "1111111111111", "publication_year": "2020", "publisher": "Old Publisher", "page_count": 100, "status": "Available"}, {"title": "New Format Book", "author": "New Author", "isbn": "2222222222222", "publish_date": "2021", "publisher": "New Publisher", "page_count": 200, "status": "Available"}]

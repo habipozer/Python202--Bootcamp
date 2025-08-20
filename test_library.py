@@ -1,31 +1,33 @@
 import pytest
 import os
 import json
+import httpx
+from unittest.mock import patch, Mock
 from library import Book, Library
 
 
 def test_str_formatting():
 
-    book = Book("Test", "Author", "0-345-24223-8", "2020", "Pub", 100)
+    book = Book("Test", "Author", "6054584294", "2020", "Pub", 100)
     
     result = str(book)
     
     assert "Title  :" in result
     assert "Author :" in result
     assert "ISBN   :" in result
-    assert "Publication Year :" in result
+    assert "Publish Date :" in result
     assert "Publisher        :" in result
     assert "Page Count       :" in result
     assert "Status           :" in result
 
 def test_borrow_book():
-    book = Book("Test", "Author", "0-345-24223-8", "2020", "Pub", 100)
+    book = Book("Test", "Author", "6054584294", "2020", "Pub", 100)
     book.borrow()
     assert book.status == "Borrowed"
 
 def test_return_book():
     
-    book = Book("Test", "Author", "0-345-24223-8", "2020", "Pub", 100)
+    book = Book("Test", "Author", "6054584294", "2020", "Pub", 100)
     book.borrow()
     
     book.return_book()
@@ -34,12 +36,12 @@ def test_return_book():
 
 def test_book_to_dict():
 
-    book = Book("Test", "Author", "0-345-24223-8", "2020", "Pub", 100)
+    book = Book("Test", "Author", "6054584294", "2020", "Pub", 100)
 
     expected_dict = {"title": "Test",
                     "author": "Author",  
-                    "isbn": "0-345-24223-8",
-                    "publication_year": "2020",
+                    "isbn": "6054584294",
+                    "publish_date": "2020",
                     "publisher": "Pub",  
                     "page_count": 100,
                     "status": "Available"}
@@ -49,8 +51,8 @@ def test_book_to_dict():
 def test_from_dict():
     test_dict = {"title": "Test",
                 "author": "Author",  
-                "isbn": "0-345-24223-8",
-                "publication_year": "2020",
+                "isbn": "6054584294",
+                "publish_date": "2020",
                 "publisher": "Pub",  
                 "page_count": 100,
                 "status": "Available"}
@@ -59,8 +61,8 @@ def test_from_dict():
 
     assert book.title == "Test"
     assert book.author == "Author"
-    assert book.isbn == "0-345-24223-8"
-    assert book.publication_year == "2020"
+    assert book.isbn == "6054584294"
+    assert book.publish_date == "2020"
     assert book.publisher == "Pub"
     assert book.page_count == 100
     assert book.status == "Available"
@@ -194,5 +196,161 @@ def test_list_books_with_content(capsys):
     
     if os.path.exists("test_list.json"):
         os.remove("test_list.json")
+
+
+def test_add_book_isbn_success():
+    """Test successful ISBN book addition via API"""
+    library = Library("Test Library", "test_isbn.json")
+    
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "title": "Test Book",
+        "authors": [{"key": "/authors/OL123A"}],
+        "publish_date": "2020",
+        "publishers": ["Test Publisher"],
+        "number_of_pages": 200
+    }
+    
+    mock_author_response = Mock()
+    mock_author_response.json.return_value = {
+        "name": "Test Author"
+    }
+    
+    with patch('httpx.get', side_effect=[mock_response, mock_author_response]):
+        library.add_book_isbn("9780123456789")
+    
+    assert len(library._booklist) == 1
+    assert library._booklist[0].title == "Test Book"
+    assert library._booklist[0].author == "Test Author"
+    assert library._booklist[0].isbn == "9780123456789"
+    
+    if os.path.exists("test_isbn.json"):
+        os.remove("test_isbn.json")
+
+
+def test_add_book_isbn_404_error():
+    """Test ISBN not found (404 error)"""
+    library = Library("Test Library", "test_isbn_404.json")
+    
+    # Mock 404 response
+    mock_response = Mock()
+    mock_response.status_code = 404
+    
+    with patch('httpx.get') as mock_get:
+        mock_get.return_value = mock_response
+        mock_get.side_effect = httpx.HTTPStatusError("Not Found", request=Mock(), response=mock_response)
+        
+        library.add_book_isbn("9999999999999")
+    
+    # Should not add any book
+    assert len(library._booklist) == 0
+    
+    if os.path.exists("test_isbn_404.json"):
+        os.remove("test_isbn_404.json")
+
+
+def test_add_book_isbn_302_redirect():
+    """Test handling of 302 redirect error"""
+    library = Library("Test Library", "test_isbn_302.json")
+    
+    # Mock 302 response for primary request
+    mock_302_response = Mock()
+    mock_302_response.status_code = 302
+    
+    # Mock successful alternative API response
+    mock_alt_response = Mock()
+    mock_alt_response.status_code = 200
+    mock_alt_response.json.return_value = {
+        "ISBN:9780123456789": {
+            "title": "Redirect Test Book",
+            "authors": [{"name": "Redirect Author"}],
+            "publish_date": "2021",
+            "publishers": [{"name": "Redirect Publisher"}],
+            "number_of_pages": 150
+        }
+    }
+    
+    with patch('httpx.get') as mock_get:
+        # First call raises 302, second call succeeds
+        mock_get.side_effect = [
+            httpx.HTTPStatusError("Found", request=Mock(), response=mock_302_response),
+            mock_alt_response
+        ]
+        
+        library.add_book_isbn("9780123456789")
+    
+    assert len(library._booklist) == 1
+    assert library._booklist[0].title == "Redirect Test Book"
+    assert library._booklist[0].author == "Redirect Author"
+    
+    if os.path.exists("test_isbn_302.json"):
+        os.remove("test_isbn_302.json")
+
+
+def test_add_book_isbn_connection_error():
+    """Test network connection error handling"""
+    library = Library("Test Library", "test_isbn_connection.json")
+    
+    with patch('httpx.get') as mock_get:
+        mock_get.side_effect = httpx.ConnectError("Connection failed")
+        
+        library.add_book_isbn("9780123456789")
+    
+    # Should not add any book
+    assert len(library._booklist) == 0
+    
+    if os.path.exists("test_isbn_connection.json"):
+        os.remove("test_isbn_connection.json")
+
+
+def test_add_book_isbn_no_authors():
+    """Test API response with no authors"""
+    library = Library("Test Library", "test_isbn_no_authors.json")
+    
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "title": "No Author Book",
+        "authors": [],  # No authors
+        "publish_date": "2020",
+        "publishers": ["Test Publisher"],
+        "number_of_pages": 100
+    }
+    
+    with patch('httpx.get', return_value=mock_response):
+        library.add_book_isbn("9780123456789")
+    
+    assert len(library._booklist) == 1
+    assert library._booklist[0].author == "Unknown Author"
+    
+    if os.path.exists("test_isbn_no_authors.json"):
+        os.remove("test_isbn_no_authors.json")
+
+
+def test_add_book_isbn_minimal_data():
+    """Test API response with minimal data"""
+    library = Library("Test Library", "test_isbn_minimal.json")
+    
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "title": "Minimal Book"
+        # Missing: authors, publish_date, publishers, number_of_pages
+    }
+    
+    with patch('httpx.get', return_value=mock_response):
+        library.add_book_isbn("9780123456789")
+    
+    assert len(library._booklist) == 1
+    book = library._booklist[0]
+    assert book.title == "Minimal Book"
+    assert book.author == "Unknown Author"
+    assert book.publish_date == "Unknown"
+    assert book.publisher == "Unknown Publisher"
+    assert book.page_count == 0
+    
+    if os.path.exists("test_isbn_minimal.json"):
+        os.remove("test_isbn_minimal.json")
 
 

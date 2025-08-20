@@ -8,15 +8,23 @@ def print_menu():
     print("┌─ Main Menu ────────────────────────────────────────────┐")
     print("│                                                        │")
     print("│  1. Add Book                                           │")
-    print("│  2. Remove Book (by ISBN)                             │")
-    print("│  3. Search Book (by ISBN)                             │")
-    print("│  4. List All Books                                    │")
-    print("│  5. Load Books (from file)                            │")
-    print("│  6. Library Statistics                                │")
-    print("│  0. Exit                                              │")
+    print("│  2. Add Book (by ISBN)                                 │")
+    print("│  3. Remove Book (by ISBN)                              │")
+    print("│  4. Search Book (by ISBN)                              │")
+    print("│  5. List All Books                                     │")
+    print("│  6. Load Books (from file)                             │")
+    print("│  7. Library Statistics                                 │")
+    print("│  0. Exit                                               │")
     print("│                                                        │")
     print("└────────────────────────────────────────────────────────┘")
     print()
+
+def register_book(library : Library):
+    """Get book information from user"""
+    print("\nNew Book Information:")
+    print("-" * 30)
+    isbn = input("ISBN: ")
+    library.add_book_isbn(isbn)
 
 def get_book_input():
     """Get book information from user"""
@@ -25,7 +33,7 @@ def get_book_input():
     title = input("Book Title: ")
     author = input("Author: ")
     isbn = input("ISBN: ")
-    publication_year = input("Publication Year: ")
+    publish_date = input("Publication Date: ")
     publisher = input("Publisher: ")
     
     while True:
@@ -35,7 +43,7 @@ def get_book_input():
         except ValueError:
             print("Please enter a valid number!")
     
-    return Book(title, author, isbn, publication_year, publisher, page_count)
+    return Book(title, author, isbn, publish_date, publisher, page_count)
 
 def show_statistics(library):
     """Display library statistics"""
@@ -63,7 +71,7 @@ def main():
 
     while True:
         print_menu()
-        choice = input("Please enter your choice (0-6): ").strip()
+        choice = input("Please enter your choice (0-7): ").strip()
 
         match choice:
             case "1":
@@ -74,8 +82,14 @@ def main():
                     print(f"'{new_book.title}' was successfully added!")
                 except Exception as e:
                     print(f"Error: {e}")
-            
             case "2":
+                print("\n>> Add Book by ISBN Operation")
+                try:
+                    register_book(library)
+                except Exception as e:
+                    print(f"Error: {e}")
+            
+            case "3":
                 print("\n>> Remove Book Operation")
                 isbn = input("Enter the ISBN of the book to remove: ")
                 if library.remove_book(isbn):
@@ -83,20 +97,20 @@ def main():
                 else:
                     print("Book was not found!")
             
-            case "3":
+            case "4":
                 print("\n>> Search Book Operation")
                 isbn = input("Enter the ISBN of the book to search: ")
                 if not library.find_book(isbn):
                     print("Would you like to search for another book?")
             
-            case "4":
+            case "5":
                 print(f"\n>> {library.name} - All Books")
                 if library._booklist:
                     library.list_books()
                 else:
                     print("No books are currently available in the library.")
             
-            case "5":
+            case "6":
                 print("\n>> Load Books Operation")
                 try:
                     library.load_books()
@@ -106,7 +120,7 @@ def main():
                 except Exception as e:
                     print(f"Error: {e}")
             
-            case "6":
+            case "7":
                 show_statistics(library)
             
             case "0":
@@ -119,7 +133,6 @@ def main():
             case _:
                 print("Invalid choice! Please enter a value between 0-6.")
         
-        # Wait to continue
         if choice != "0":
             input("\nPress Enter to continue...")
 
