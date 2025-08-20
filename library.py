@@ -1,7 +1,7 @@
 import json
 
 class Book:
-    def __init__(self, title: str, author: str, isbn: str, publication_year: str, publisher: str, page_count: int, status: bool = False):
+    def __init__(self, title: str, author: str, isbn: str, publication_year: str, publisher: str, page_count: int, status: str = "Available"):
         self.title = title
         self.author = author
         self.isbn = isbn
@@ -18,8 +18,13 @@ class Book:
                 Publication Year : {self.publication_year}
                 Publisher        : {self.publisher}
                 Page Count       : {self.page_count}
-                Status           : {"Already Borrowed" if self.status else "Available"}
+                Status           : {"Already Borrowed" if self.status == "Borrowed" else "Available"}
                     """
+    def borrow(self):
+        self.status = "Borrowed"
+    def return_book(self):
+        self.status = "Available"
+    
     def to_dict(self):
         dict = {
             "title" : self.title,
